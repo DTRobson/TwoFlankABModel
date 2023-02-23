@@ -68,6 +68,8 @@ def COMS(x, y, wl, wr, lambda1, lambda2, lambda3, alpha = 0.05, delta = 4.6):
     return (x, y), (xl, yl), (xr, yr)
     
 class Barchan(Agent):
+    '''Creates new class representing a barchan dune, identified by the a unique_id, a left-width and a right-width.  The dune is situated in 
+    a space belonging to the specified model'''
     
     def __init__(self, unique_id, model, lw, rw):
         self.unique_id = unique_id
@@ -373,6 +375,10 @@ class Barchan(Agent):
         
     
 class Swarm(Model):
+    '''Creates a new class representing a swarm of barchan dunes.  These dunes are situated in a continuous space which is a model attribute.  Other
+    attributes are the positions, sizes, and id numbers of the dunes and model parameters including whether or not new dunes are injected at the upwind boundary and, if
+    they are, the parameters of the injecting size distirbution, the shape parameters of the dunes, and the sand flux parameters.
+    whether the space is periodic, the initial density of dunes,
     
     def __init__(self, simwidth, simlength, fieldwidth, fieldlength,
                  xs, ys, lws, rws, qsatinit,
@@ -380,7 +386,7 @@ class Swarm(Model):
                  inject = False, periodic = False, initdensity = None,
                  injectparams = [2.3, 18, 2.3, 18],
                  lambda3 = 1/6, lambda1 = 1., lambda2 = 1.8, thetar = np.pi/6,
-                 alpha = 0.05, delta = 4.6, collson = False, c = 1., w0 = 0., a = 0.45, b = 0.1, outfluxmode = 'Duran'):
+                 alpha = 0.05, delta = 4.6, collson = False, c = 1., w0 = 0., a = 0.45, b = 0.1, outfluxmode = 'Hersen'):
         
         
 
