@@ -50,12 +50,10 @@ collson = True #if False collisions will be turned off
 
 inject = False #if True, a number of dunes will be injected into the swarm at every timestep.  This can be achieved manually instead
                 # using swarm.add(lwnew, rwnew, xnew, ynew, newid = model.maxid + 1)
-injectdist = Uniform #function for determining the sizes of newly injected dunes
+injectdist = Uniform #function for determining the total width of newly injected dunes
                      #can be set to any function you want to define that takes a two input, params and num
-                     # e.g Uniform takes two inputs e.g. params = (a,b,c,d), num =  2 to give
-                     #an output (lw, rw) where lw is uniform in [a,b] and rw
-                     # is uniform in [c,d]
-injectparams = [15.3, 15.3, 15.3, 15.3]#the input parameter for the chosen injectdist
+                     # e.g Uniform takes two inputs e.g. params = (a,b), num = 1 reutrn a uniform number between a and b
+injectparams = [30, 30]#the input parameter for the chosen injectdist
 initdensity = 1e-5 #used to define the density of dunes just upwind of the simulated space which controls the rate at which
                     #they will be injected if inject == True
                 
