@@ -55,8 +55,9 @@ def BimodalGaussians(params):
         return Gaussian((theta2, theta2sd))
 
 
-def Fixed(params):
+def Custom(params):
     theta = np.random.choice(params)
     windirection = GetVector(theta)
     return windirection
+
 

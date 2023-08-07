@@ -112,13 +112,13 @@ def Rotate(polygon, windirection):
         
     
     mat = np.array([[np.cos(theta), - np.sin(theta)],
-                        [np.sin(theta), np.cos(theta)]])
+                        [np.sin(theta), np.cos(theta)]], dtype = np.float32)
     
     
     if type(polygon) == Polygon:
     
 
-        coords = np.array(polygon.exterior.xy)
+        coords = np.array(polygon.exterior.xy, dtype = np.float32)
         rotatedcoords = mat.dot(coords)
         rotated = Polygon([(rotatedcoords[0, i], rotatedcoords[1, i])
                            for i in range(len(rotatedcoords[0, :]))])
@@ -143,14 +143,27 @@ def Rotate(polygon, windirection):
     return rotated
                       
 def RotateXY(x, y, wd):
-    angle = wind.GetAngle(wd) - 3*np.pi/2
-    mat = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    
+    if len(wd) == 2:
+            windirection = np.append(wd, 0)
+        
+    crossproduct = np.cross(windirection, (0, -1, 0))
+        
+    theta = np.arcsin(crossproduct)[-1]
+        
+    if np.sign(windirection[1]) == 1:
+            theta = np.pi - theta
+        
+        
+    
+    mat = np.array([[np.cos(theta), - np.sin(theta)],
+                        [np.sin(theta), np.cos(theta)]], dtype = np.float32)
     newx, newy = mat.dot(np.array([x, y]))
     return newx, newy
     
 
-def Barchan(x, y, wl, wr, hornlwratio = 1.8,
-            lwratio = 1., alpha = 0.05, delta = 4.6, lambda3 = 2/3):
+def Barchan(x, y, wl, wr, hornlwratio = 2.5,
+            lwratio = 1.5, alpha = 0.05, delta = 4.6, lambda3 = 1/6):
     '''
     Function creates a shapely shapely.geometry.Polygon object
     for the left and right flanks of a barchan dune allowing for
@@ -188,59 +201,73 @@ def Barchan(x, y, wl, wr, hornlwratio = 1.8,
 
     '''
     
-    minw = (delta/2)/(1 - alpha)
-    if wl <=0 or wr <= 0:
-        return box([x - 1e-5,y, x + 1e-5, y-2e-5]), box([x - 1e-5,y, x + 1e-5, y-2e-5])
-      
+    
+    x = np.mean(x)
+    y = np.mean(y)
+    wl = np.mean(wl)
+    wr = np.mean(wr)
+    x = np.nan_to_num(x)
+    y = np.nan_to_num(y)
+    wl = np.nan_to_num(wl)
+    wr = np.nan_to_num(wr)
+    if type(x) == type(np.nan) or type(y) == type(np.nan) or type(wl) == type(np.nan) or type(wr) == type(np.nan):
+
+        return Point((0,0)), Point((0,0))
     else:
-    
-        leftlength = lwratio * wl 
-        lefthornwidth = alpha*wl + delta/2
-        lefthornlength = wl*hornlwratio
-        
-        rightlength = lwratio * wr
-        righthornwidth = alpha*wr + delta/2
-        righthornlength = wr*hornlwratio
-        
-        #we assume that the length of the body of the asymmetric barchan
-        #is equal to the average of the lengths of the bodies of symmetric
-        #barchans with widths wl and wr
-        bodylength = (leftlength + rightlength)/2
-        
-        pl1 = (x, y) #toe
-        pl2 = (x - wl, y - bodylength) #leftmost extent
-        pl3 = (x - wl + lefthornwidth/2, y - lefthornlength)# tip ofleft horn
-        pl4 = (x, y - bodylength) #brink
-        
-        if wl >= minw:
-            leftflank = Polygon([pl1, pl2, pl3, pl4])
+        minw = (delta/2)/(1 - alpha)
+        if wl <=0 or wr <= 0:
+            return box(x - 1e-5,y, x + 1e-5, y-2e-5), box(x - 1e-5,y, x + 1e-5, y-2e-5)
+          
         else:
-            leftflank  = box(x-wl, y - lefthornlength, x, y)
         
-        pr1 = (x, y)
-        pr2 = (x + wr, y - bodylength) #rightmost extent
-        pr3 = (x + wr - righthornwidth/2, y - righthornlength) # tip of right horn
-        pr4 = (x, y -  bodylength)
+            leftlength = lwratio * wl 
+            lefthornwidth = alpha*wl + delta/2
+            lefthornlength = wl*hornlwratio
+            
+            rightlength = lwratio * wr
+            righthornwidth = alpha*wr + delta/2
+            righthornlength = wr*hornlwratio
+            
+            #we assume that the length of the body of the asymmetric barchan
+            #is equal to the average of the lengths of the bodies of symmetric
+            #barchans with widths wl and wr
+            bodylength = (leftlength + rightlength)/2
+            
+            pl1 = (x, y) #toe
+            pl2 = (x - wl, y - bodylength) #leftmost extent
+            pl3 = (x - wl + lefthornwidth/2, y - lefthornlength)# tip ofleft horn
+            pl4 = (x, y - bodylength) #brink
+            
+            if wl >= minw:
+                leftflank = Polygon([pl1, pl2, pl3, pl4])
+            else:
+
+                leftflank  = box(x-wl, y - lefthornlength, x, y)
+            
+            pr1 = (x, y)
+            pr2 = (x + wr, y - bodylength) #rightmost extent
+            pr3 = (x + wr - righthornwidth/2, y - righthornlength) # tip of right horn
+            pr4 = (x, y -  bodylength)
+            
         
-    
-        if wr >= minw:
-            rightflank = Polygon([pr1, pr2, pr3, pr4])
-        else:
-            rightflank = box(x, y-righthornlength, x+wr, y)
-        
-        if leftflank.is_valid == True and rightflank.is_valid == True:
-            return leftflank, rightflank
-        else:
-            vl = VS(wl, wr, lwratio, hornlwratio, lambda3, True)
-            vr = VS(wr, wl, lwratio, hornlwratio, lambda3, True)
-            v = vl + vr
-            w = EquivWidth(v, hornlwratio, lambda3, 'body')
-            leftflank = box(x-w/2, y-w, x, y)
-            rightflank = box(x, y-w, x+w/2, y)
-            return  leftflank, rightflank
+            if wr >= minw:
+                rightflank = Polygon([pr1, pr2, pr3, pr4])
+            else:
+                rightflank = box(x, y-righthornlength, x+wr, y)
+            
+            if leftflank.is_valid == True and rightflank.is_valid == True:
+                return leftflank, rightflank
+            else:
+                vl = VS(wl, wr, lwratio, hornlwratio, lambda3, True)
+                vr = VS(wr, wl, lwratio, hornlwratio, lambda3, True)
+                v = vl + vr
+                w = EquivWidth(v, hornlwratio, lambda3, 'body')
+                leftflank = box(x-w/2, y-w, x, y)
+                rightflank = box(x, y-w, x+w/2, y)
+                return  leftflank, rightflank
 
 
-def Shadow(fluxfield, leftflank, rightflank, windirection = [0, -1], shift = 1e-5):
+def Shadow(fluxfield, leftflank, rightflank, windirection = [0, -1], shift = 1e-4):
     '''
     Subtract the left and right flanks and the shadow they create from the flux field
 
@@ -272,11 +299,13 @@ def Shadow(fluxfield, leftflank, rightflank, windirection = [0, -1], shift = 1e-
         if type(barchan) == Polygon:
             xb, yb = barchan.exterior.xy
         else:
+            print('babby')
             xb = np.empty(0, dtype = float)
             yb = np.empty(0, dtype = float)
             for geom in barchan.geoms:
                 xg, yg = geom.exterior.xy
                 xb = np.append(xb, xg)
+                yb = np.append(yb, yg)
 
         
         if type(fluxfield) == Polygon:
@@ -292,11 +321,13 @@ def Shadow(fluxfield, leftflank, rightflank, windirection = [0, -1], shift = 1e-
             fieldy = np.ndarray.flatten(fieldy)
 
 
-        x = np.array(xb)
-        y = np.array(yb)
+        x = np.array(xb, dtype = np.float32)
+        y = np.array(yb, dtype = np.float32)
         
         shiftedx = x + shift * windirection[0] * np.ones(len(x))
         shiftedy = y + shift * windirection[1] * np.ones(len(y))
+        
+
         
         points = [(shiftedx[i], shiftedy[i]) for i in range(len(shiftedx))]
         
@@ -314,20 +345,22 @@ def Shadow(fluxfield, leftflank, rightflank, windirection = [0, -1], shift = 1e-
         return newfluxfield
         
     else:
+
         return fluxfield
     
     
         
-        
-
 
 def OverlapWidth(poly1, poly2):
-    overlap = poly1.intersection(poly2)
-    bs = overlap.bounds
-    if len(bs) > 0:
-        minx, miny, maxx, maxy = bs
-        width = abs(maxx - minx)
-        return width
+    if poly1.intersects(poly2) == True:
+        overlap = poly1.intersection(poly2)
+        bs = overlap.bounds
+        if len(bs) > 0:
+            minx, miny, maxx, maxy = bs
+            width = abs(maxx - minx)
+            return width
+        else:
+            return 0
     else:
         return 0
 
@@ -345,6 +378,9 @@ def IndividualAmbientFlux(fluxfield, leftflank, rightflank, q0, dt, winddirectio
         leftinflux = leftoverlappingwidth * q0 * dt
         rightoverlappingwidth = OverlapWidth(fluxfield, rightflank)
         rightinflux = rightoverlappingwidth * q0 * dt
+
+    
+
 
     return fluxfield, leftinflux, rightinflux
 
@@ -406,19 +442,22 @@ def HeavisideIsh(x, extents, posorneg):
         
 
 def HornPoly(x, y, hornw, miny):
+    x = np.nan_to_num(x)
+    y = np.nan_to_num(y)
+    hornw = np.nan_to_num(hornw)
     return box(x-hornw/2, miny, x + hornw/2, y-1e-3)
 
 def HornFlux(hpoly, dunes, leftflanks, rightflanks, qsat, dt):
+    
     for i in range(len(dunes)):
         d = dunes[i]
-        left = leftflanks[i]
-        right = rightflanks[i]
-        barchan = unary_union([left, right])
-        if barchan.intersects(hpoly) == True:
-            hpoly, leftin, rightin = IndividualAmbientFlux(hpoly, left, right, qsat, dt)
-            d.leftinflux += leftin
-            d.rightinflux += rightin
-        
+        leftflank = leftflanks[i]
+        rightflank = rightflanks[i]
+        hpoly, lin, rin = IndividualAmbientFlux(hpoly, leftflank, rightflank, qsat, dt)
+        d.leftinflux += lin
+        d.rightinflux += rin
+    return hpoly
+    
         
 
 
@@ -474,7 +513,9 @@ def GenDunesEtc(dunes, xs, ys, lws, rws, wd, qsat, q0, dt, w0 = 0., c = 1.,
     
 
 def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, w0 = 0., c = 1.,
-                          lambda1 = 1., lambda2 = 1.8, lambda3 = 1/6, alpha = 0.05, delta = 4.6, a = 0.45, b = 0.1, outfluxmode = 'Duran'):
+                          lambda1 = 1., lambda2 = 1.8, lambda3 = 1/6, alpha = 0.05,
+                          delta = 4.6, a = 0.45, b = 0.1, outfluxmode = 'Duran',
+                          plotting = False):
     
     
     dunes = np.array(dunes, dtype = object)
@@ -492,6 +533,10 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
 
     orderedinds = [i for _, i in sorted(zip(-rotys, np.arange(num)))]
     
+    lefthorns = []
+    righthorns = []
+    
+
     for ind in orderedinds:
         
         
@@ -503,21 +548,25 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
         lhw = lhws[ind]
         rhx = rotrhxs[ind]
         rhy = rotrhys[ind]
-        rhw = rhws[ind]       
+        rhw = rhws[ind]    
+        lhx = np.nan_to_num(lhx)
+        lhy = np.nan_to_num(lhy)
+        rhx = np.nan_to_num(rhx)
+        rhy = np.nan_to_num(rhy)
         
+
+
         rotatedflux, leftinflux, rightinflux = IndividualAmbientFlux(rotatedflux, left, right, q0, dt)
         
         dune.leftinflux += leftinflux
         dune.rightinflux += rightinflux
         
-        
-        
-        
-        
         lefthorn = HornPoly(lhx, lhy, lhw, miny)
         
         righthorn = HornPoly(rhx, rhy, rhw, miny)
         
+
+
         if outfluxmode == 'Duran':
     
             qoutleft = (a*leftinflux + b * qsat) * lws[ind]/lhw
@@ -534,22 +583,39 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
         dune.leftoutflux += qoutleft * lhw * dt
         dune.rightoutflux += qoutright*dt*rhw
         
-        HornFlux(lefthorn, dunes[orderedinds][ind:], rotlefts[orderedinds][ind:], rotrights[orderedinds][ind:], qoutleft, dt)
-        HornFlux(righthorn, dunes[orderedinds][ind:], rotlefts[orderedinds][ind:], rotrights[orderedinds][ind:], qoutright, dt)
+
+        
+        
+        
+        
+        otherinds = np.array(orderedinds)[np.where(orderedinds != ind)]
         
 
+        
+        
+
+        lefthorn = HornFlux(lefthorn, dunes[otherinds], rotlefts[otherinds], rotrights[otherinds], qoutleft, dt)
+        righthorn = HornFlux(righthorn, dunes[otherinds], rotlefts[otherinds], rotrights[otherinds], qoutleft, dt)
+        
+        
+
+        if plotting == True:
+            lefthorns.append(Rotate(lefthorn, (-wd[0], wd[1])))
+            righthorns.append(Rotate(righthorn, (-wd[0], wd[1])))
+            
+        
         
         migrate = MigrationRate(lws[ind], rws[ind], qsat, dt, w0, c)
 
         
         dune.tomove = (migrate*wd[0], migrate*wd[1])
+
+        
+    return xs, ys, lws, rws, lefts, rights, dunes, Rotate(rotatedflux, (-wd[0], wd[1])), lefthorns, righthorns
         
         
-    return lefts, rights, dunes, Rotate(rotatedflux, (-wd[0], wd[1]))
         
-        
-        
-    
+
 
     
     
