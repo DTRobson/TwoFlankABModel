@@ -5,12 +5,7 @@ Created on Mon Jun 20 10:48:46 2022
 @author: Robbo
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Feb  3 11:38:01 2022
 
-@author: Robbo
-"""
 
 from mesa import Agent, Model
 from mesa.time import SimultaneousActivation
@@ -23,6 +18,7 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 from GammaStuff import max_gamma as gamma_c
 import WinddirectionStuff as wind
+from sys import getrefcount
 
 
 def Uniform(params, num):
@@ -85,6 +81,8 @@ def COMS(x, y, wl, wr, lambda1, lambda2, lambda3, alpha = 0.05, delta = 4.6):
         x = x
         y = y
     return (x, y), (xl, yl), (xr, yr)
+
+
     
 class Barchan(Agent):
     
@@ -102,7 +100,6 @@ class Barchan(Agent):
         self.lwnew = lw
         self.rwnew = rw
         self.destroy = False
-
 
         
     def update(self, xnew, ynew, lnew, rnew):
@@ -195,7 +192,7 @@ class Barchan(Agent):
                 self.model.add(np.mean(newlw), np.mean(newrw), np.mean(xnew), np.mean(ynew), self.model.maxid + 1)
             
             self.model.remove(self)
-                
+
             
             
             
@@ -243,7 +240,7 @@ class Barchan(Agent):
                 self.model.add(np.mean(newlw), np.mean(newrw), np.mean(xnew), np.mean(ynew), self.model.maxid + 1)
             
             self.model.remove(self)
-                
+
 
             
             
@@ -256,7 +253,7 @@ class Barchan(Agent):
                            self.model.maxid + 1)
         
         self.model.numsplits += 1
-        self.model.splitrecord.append([lw, rw, newlw, newrw, daughterrw])
+        self.model.splitrecord.append([x, y, lw, rw, newlw, newrw, daughterrw])
         #print(ynew, daughtery, 'ypositions')
         #print(xnew, daughterx, 'xpositions')
         #print(newlw, daughterlw, 'lws')
@@ -264,6 +261,8 @@ class Barchan(Agent):
         #print('xs', self.model.xs)
         #print('ys', self.model.ys)
         #print('lws', self.model.lws)
+        self = None
+        del self
         
             
 
@@ -306,6 +305,9 @@ class Barchan(Agent):
         
         if self.destroy == True:
             self.model.remove(self)
+            self = None
+            print(getrefcount(self),'boby')
+            del self
               
         else:
             
@@ -328,7 +330,7 @@ class Barchan(Agent):
             
 
             
-            if xmig < self.model.minx or xmig > self.model.maxx or ymig < self.model.miny:
+            if xmig < 0 or xmig > self.model.simwidth or ymig < 0:
                 self.model.remove(self)
             
             else:
@@ -360,6 +362,8 @@ class Barchan(Agent):
                         self.update(xnew, ynew, lnew, rnew)
                     else:
                         self.model.remove(self)
+                        self = None
+                        del self
                         
             
                 else:
@@ -388,6 +392,8 @@ class Barchan(Agent):
                             
                     else:
                         self.model.remove(self)
+                        self = None
+                        del self
                     
 
 
@@ -461,7 +467,7 @@ class Swarm(Model):
         #print(self.initdensity, 'fsdfasdfasdfasdf')
         self.injectdist = injectdist
         self.injectparams = injectparams
-        temptestws = injectdist(injectparams, 10**6)
+        temptestws = injectdist(injectparams, 10**4)
         self.avemigdist = np.mean([bss.MigrationRate(temptestws[i]/2, temptestws[i]/2, qsatinit, dt, w0, c) for i in range(len(temptestws))])
         #print(self.avemigdist, 'sfasooyosdoo')
         self.injectnum = self.initdensity * self.avemigdist * self.fieldwidth
@@ -478,6 +484,8 @@ class Swarm(Model):
             self.dune_unique_ids.append(i)
             self.schedule.add(dune)
             self.desert.place_agent(dune, (xs[i], ys[i]))
+            dune = None
+            del dune
         
         self.maxid = max(self.dune_unique_ids)
         self.dune_unique_ids = np.array(self.dune_unique_ids, dtype = np.int32)
@@ -498,12 +506,14 @@ class Swarm(Model):
             self.rws = np.append(self.rws, rw)
             self.xs = np.append(self.xs, x)
             self.ys = np.append(self.ys, y)
+            dune = None
+            del dune
 
     
     def remove(self, dune):
         
         #print('removing', dune.unique_id, dune.lw, dune.rw, dune.pos, self.minx, self.maxx, self.miny, self.simlength)
-
+        
         ind = np.where(self.dune_unique_ids == dune.unique_id)
         self.desert.remove_agent(dune)
         self.dunes = np.delete(self.dunes, ind)
@@ -513,6 +523,10 @@ class Swarm(Model):
         self.ys = np.delete(self.ys, ind)
         self.lws = np.delete(self.lws, ind)
         self.rws = np.delete(self.rws, ind)
+        dune = None
+        del dune
+        
+        
         
         
     def injection(self, qsat):
@@ -571,6 +585,11 @@ class Swarm(Model):
                         self.remove(d2)
                     elif initrw2 < minw:
                         self.remove(d2)
+                    d1 = None
+                    d2 = None
+                    del d1
+                    del d2
+                
                 else:
                 
                     initx1, inity1 = d1.pos
@@ -581,6 +600,10 @@ class Swarm(Model):
                     
                     self.remove(d1)
                     self.remove(d2)
+                    d1 = None
+                    d2 = None
+                    del d1
+                    del d2
                     
                     l1 = lefts[c1]
                     r1 = rights[c1]
@@ -600,16 +623,30 @@ class Swarm(Model):
                         y = ys[j]
                         newid = self.maxid + 1
                         self.add(lw, rw, x, y, newid)
+        dunes = None
+        del dunes
                         
 
             
             
     def step(self, qsat, wd, fluxfield, plot):
         
+        
+        
         if qsat != self.qsatinit:
             self.injectnum = self.originalinjectnum*(qsat/self.qsatinit)
         
+        
         self.windangle = wind.GetAngle(wd)
+        
+        if self.windangle < 0:
+            self.windangle = 2*np.pi + self.windangle
+        
+        if self.windangle < np.pi:
+            self.injectnum = 0.
+        
+        else:
+            self.injectnum = self.originalinjectnum * np.sin(self.windangle - np.pi)
 
         q0 = self.q0ratio*qsat
         qshift = self.qshiftratio*qsat
@@ -635,17 +672,23 @@ class Swarm(Model):
         if self.collson == True:
             self.collisions(plotxs, plotys, plotlws, plotrws, plotdunes, plotlefts, plotrights)
             
-
+        plotdunes = None
+        del plotdunes
+        dunes = None
+        del dunes
             
         if self.toinject == True:
             self.injection(qsat)
             
         if plot == True:
+
             return plotlefts, plotrights, ff, lefthorns, righthorns
         
                     
         else:
+
             return None
+        
             
         
         
