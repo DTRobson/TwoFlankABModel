@@ -162,8 +162,8 @@ def RotateXY(x, y, wd):
     return newx, newy
     
 
-def Barchan(x, y, wl, wr, hornlwratio = 2.5,
-            lwratio = 1.5, alpha = 0.05, delta = 4.6, lambda3 = 1/6):
+def Barchan(x, y, wl, wr, hornlwratio = 1.8,
+            lwratio = 1., alpha = 0.05, delta = 4.6, lambda3 = 1/3):
     '''
     Function creates a shapely shapely.geometry.Polygon object
     for the left and right flanks of a barchan dune allowing for
@@ -456,6 +456,10 @@ def HornFlux(hpoly, dunes, leftflanks, rightflanks, qsat, dt):
         hpoly, lin, rin = IndividualAmbientFlux(hpoly, leftflank, rightflank, qsat, dt)
         d.leftinflux += lin
         d.rightinflux += rin
+        d = None
+        del d
+    dunes = None
+    del dunes
     return hpoly
     
         
@@ -505,7 +509,8 @@ def GenDunesEtc(dunes, xs, ys, lws, rws, wd, qsat, q0, dt, w0 = 0., c = 1.,
         
         rotx, roty = RotateXY(x, y, wd)
         rotys = np.append(rotys, roty)
-        
+    dunes = None
+    del dunes
     return lefts, rights, rotys, rotlefts, rotrights, rotlhxs, rotlhys, rotrhxs, rotrhys, lhws, rhws
         
 
@@ -517,6 +522,8 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
                           delta = 4.6, a = 0.45, b = 0.1, outfluxmode = 'Duran',
                           plotting = False):
     
+    lvols = VS(lws, rws, lambda1, lambda2, lambda3, True)
+    rvols = VS(rws, lws, lambda1, lambda2, lambda3, True)
     
     dunes = np.array(dunes, dtype = object)
     num = len(xs)
@@ -553,6 +560,8 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
         lhy = np.nan_to_num(lhy)
         rhx = np.nan_to_num(rhx)
         rhy = np.nan_to_num(rhy)
+        lv = lvols[ind]
+        rv = rvols[ind]
         
 
 
@@ -579,23 +588,18 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
             qoutright = qsat
         
         
+        qoutleft = min(qoutleft, (lv + leftinflux)/(lhw*dt))
+        qoutright = min(qoutright, (rv + rightinflux)/(rhw*dt))
+        
         
         dune.leftoutflux += qoutleft * lhw * dt
         dune.rightoutflux += qoutright*dt*rhw
         
-
-        
-        
-        
         
         otherinds = np.array(orderedinds)[np.where(orderedinds != ind)]
         
-
-        
-        
-
         lefthorn = HornFlux(lefthorn, dunes[otherinds], rotlefts[otherinds], rotrights[otherinds], qoutleft, dt)
-        righthorn = HornFlux(righthorn, dunes[otherinds], rotlefts[otherinds], rotrights[otherinds], qoutleft, dt)
+        righthorn = HornFlux(righthorn, dunes[otherinds], rotlefts[otherinds], rotrights[otherinds], qoutright, dt)
         
         
 
@@ -604,11 +608,12 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
             righthorns.append(Rotate(righthorn, (-wd[0], wd[1])))
             
         
-        
         migrate = MigrationRate(lws[ind], rws[ind], qsat, dt, w0, c)
 
         
         dune.tomove = (migrate*wd[0], migrate*wd[1])
+        dune = None
+        del dune
 
         
     return xs, ys, lws, rws, lefts, rights, dunes, Rotate(rotatedflux, (-wd[0], wd[1])), lefthorns, righthorns
@@ -617,15 +622,7 @@ def IterationCalculations(fluxfield, dunes, xs, ys, lws, rws, wd, qsat, q0, dt, 
         
 
 
-    
-    
-        
-        
-        
-            
-            
-            
-        
+
         
         
         
